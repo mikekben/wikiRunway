@@ -1,0 +1,6 @@
+data/airports/
+data/airlines/
+data/airport_list.json
+data/airline_list.json
+__pycache__/
+*.pyc
