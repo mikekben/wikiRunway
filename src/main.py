@@ -22,6 +22,8 @@ def main():
                         help="Verify two-directionality of all routes departing from the given airport")
     parser.add_argument("-vu", "--verify-update", metavar="CODE",
                         help="Like --verify, but fetches and updates asymmetric airports then re-runs")
+    parser.add_argument("-r", "--region", metavar="CODE",
+                        help="Print the ISO 3166 region of the given airport IATA code")
     args = parser.parse_args()
 
 
@@ -46,6 +48,14 @@ def main():
 
     # exit()
         
+
+    if args.region:
+        code = args.region.upper()
+        region = Airport(code).region()
+        if region:
+            print(region.code)
+        else:
+            print(f"No region found for {code}")
 
     if args.dtable:
         code = args.dtable.upper()

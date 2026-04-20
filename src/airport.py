@@ -5,6 +5,7 @@ import json
 
 from .airline import Airline
 from .config import AIRPORTS_DIR, AIRPORTS_LIST
+from .region import Region
 
 _request_count = 0
 _REQUEST_LIMIT = 100
@@ -257,6 +258,12 @@ class Airport:
     def printDestinationTable(self):
         for line in sorted(self.airlineList(), key=lambda a: a.code):
             print(f"{line}: {','.join(sorted(str(d) for d in self.destinationList(line)))}")
+
+    def region(self):
+        match = re.search(r'region:([A-Z]{2}(?:-[A-Z0-9]+)?)', self.contents())
+        if match:
+            return Region(match.group(1))
+        return None
 
     def airlineList(self):
         airlines = set()

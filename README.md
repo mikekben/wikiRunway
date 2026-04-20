@@ -40,6 +40,18 @@ Prints a table of airlines and their destinations for the given airport. For exa
 python3 -m src.main -t ORD
 ```
 
+### Looking up a region
+
+```
+python3 -m src.main -r <IATA>
+```
+
+Prints the ISO 3166-2 region code for the given airport, parsed from its Wikipedia coordinates. For example:
+
+```
+python3 -m src.main -r LHR
+```
+
 ### Verifying routes
 
 ```
@@ -93,7 +105,7 @@ Rebuilds or updates the full database by querying PetScan for all pages in the W
 
 Wikipedia pages updated using this tool:
 
-- **Airports:** [ATL](https://en.wikipedia.org/wiki/Hartsfield%E2%80%93Jackson_Atlanta_International_Airport), [BNA](https://en.wikipedia.org/wiki/Nashville_International_Airport), [COD](https://en.wikipedia.org/wiki/Yellowstone_Regional_Airport), [CTG](https://en.wikipedia.org/wiki/Rafael_N%C3%BA%C3%B1ez_International_Airport), [FRA](https://en.wikipedia.org/wiki/Frankfurt_Airport), [GUA](https://en.wikipedia.org/wiki/La_Aurora_International_Airport), [IDA](https://en.wikipedia.org/wiki/Idaho_Falls_Regional_Airport), [IND](https://en.wikipedia.org/wiki/Indianapolis_International_Airport), [JFK](https://en.wikipedia.org/wiki/John_F._Kennedy_International_Airport), [KOA](https://en.wikipedia.org/wiki/Kona_International_Airport), [KWI](https://en.wikipedia.org/wiki/Kuwait_International_Airport), [LAS](https://en.wikipedia.org/wiki/Harry_Reid_International_Airport), [LAX](https://en.wikipedia.org/wiki/Los_Angeles_International_Airport), [MUC](https://en.wikipedia.org/wiki/Munich_Airport), [OAJ](https://en.wikipedia.org/wiki/Albert_J._Ellis_Airport), [ORD](https://en.wikipedia.org/wiki/O%27Hare_International_Airport), [OWB](https://en.wikipedia.org/wiki/Owensboro%E2%80%93Daviess_County_Regional_Airport), [PUJ](https://en.wikipedia.org/wiki/Punta_Cana_International_Airport), [RNO](https://en.wikipedia.org/wiki/Reno%E2%80%93Tahoe_International_Airport), [STL](https://en.wikipedia.org/wiki/St._Louis_Lambert_International_Airport), [VCE](https://en.wikipedia.org/wiki/Venice_Marco_Polo_Airport), [VIE](https://en.wikipedia.org/wiki/Vienna_International_Airport), [Chinua Achebe International Airport](https://en.wikipedia.org/wiki/Chinua_Achebe_International_Airport), [Çukurova International Airport](https://en.wikipedia.org/wiki/%C3%87ukurova_International_Airport), [Bayelsa International Airport](https://en.wikipedia.org/wiki/Bayelsa_International_Airport)
+- **Airports:** [ACE](https://en.wikipedia.org/wiki/Lanzarote_Airport), [AGP](https://en.wikipedia.org/wiki/M%C3%A1laga_Airport), [ALC](https://en.wikipedia.org/wiki/Alicante%E2%80%93Elche_Miguel_Hern%C3%A1ndez_Airport), [AMM](https://en.wikipedia.org/wiki/Queen_Alia_International_Airport), [ATH](https://en.wikipedia.org/wiki/Athens_International_Airport), [ATL](https://en.wikipedia.org/wiki/Hartsfield%E2%80%93Jackson_Atlanta_International_Airport), [BLQ](https://en.wikipedia.org/wiki/Bologna_Guglielmo_Marconi_Airport), [BNA](https://en.wikipedia.org/wiki/Nashville_International_Airport), [BOG](https://en.wikipedia.org/wiki/El_Dorado_International_Airport), [BRI](https://en.wikipedia.org/wiki/Bari_Karol_Wojty%C5%82a_Airport), [COD](https://en.wikipedia.org/wiki/Yellowstone_Regional_Airport), [CTG](https://en.wikipedia.org/wiki/Rafael_N%C3%BA%C3%B1ez_International_Airport), [FRA](https://en.wikipedia.org/wiki/Frankfurt_Airport), [GUA](https://en.wikipedia.org/wiki/La_Aurora_International_Airport), [IDA](https://en.wikipedia.org/wiki/Idaho_Falls_Regional_Airport), [IND](https://en.wikipedia.org/wiki/Indianapolis_International_Airport), [JFK](https://en.wikipedia.org/wiki/John_F._Kennedy_International_Airport), [KBP](https://en.wikipedia.org/wiki/Boryspil_International_Airport), [KOA](https://en.wikipedia.org/wiki/Kona_International_Airport), [KWI](https://en.wikipedia.org/wiki/Kuwait_International_Airport), [LAS](https://en.wikipedia.org/wiki/Harry_Reid_International_Airport), [LAX](https://en.wikipedia.org/wiki/Los_Angeles_International_Airport), [MUC](https://en.wikipedia.org/wiki/Munich_Airport), [OAJ](https://en.wikipedia.org/wiki/Albert_J._Ellis_Airport), [ORD](https://en.wikipedia.org/wiki/O%27Hare_International_Airport), [OWB](https://en.wikipedia.org/wiki/Owensboro%E2%80%93Daviess_County_Regional_Airport), [PRG](https://en.wikipedia.org/wiki/V%C3%A1clav_Havel_Airport_Prague), [PUJ](https://en.wikipedia.org/wiki/Punta_Cana_International_Airport), [RHO](https://en.wikipedia.org/wiki/Rhodes_International_Airport), [RNO](https://en.wikipedia.org/wiki/Reno%E2%80%93Tahoe_International_Airport), [SKG](https://en.wikipedia.org/wiki/Thessaloniki_Airport), [STL](https://en.wikipedia.org/wiki/St._Louis_Lambert_International_Airport), [SVQ](https://en.wikipedia.org/wiki/Seville_Airport), [TAO](https://en.wikipedia.org/wiki/Qingdao_Jiaodong_International_Airport), [TAS](https://en.wikipedia.org/wiki/Tashkent_International_Airport), [URC](https://en.wikipedia.org/wiki/%C3%9Cr%C3%BCmqi_Tianshan_International_Airport), [VCE](https://en.wikipedia.org/wiki/Venice_Marco_Polo_Airport), [VIE](https://en.wikipedia.org/wiki/Vienna_International_Airport), [VLC](https://en.wikipedia.org/wiki/Valencia_Airport), [Chinua Achebe International Airport](https://en.wikipedia.org/wiki/Chinua_Achebe_International_Airport), [Çukurova International Airport](https://en.wikipedia.org/wiki/%C3%87ukurova_International_Airport), [Bayelsa International Airport](https://en.wikipedia.org/wiki/Bayelsa_International_Airport)
 - **Airlines:** [Havana Air](https://en.wikipedia.org/wiki/Havana_Air)
 
 ## Running the tests
