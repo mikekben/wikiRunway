@@ -4,6 +4,7 @@ import os
 import time
 import json
 import argparse
+import difflib
 
 from .config import (
     AIRPORTS_DIR, AIRPORTS_LIST, PETSCAN_AIRPORTS_CATEGORY,
@@ -127,8 +128,10 @@ def fetch_and_save_batch(titles, name_table, cfg, extract_iata):
     return saved, skipped
 
 
-def fetch_redirects(name_table, names_file, missing_only=False, iata_filter=None):
-    """Query Wikipedia redirect aliases and add them to the name table."""
+def fetch_redirects(name_table, names_file, missing_only=False, iata_filter=None, verbose=True):
+    """Query Wikipedia redirect aliases and add them to the name table.
+    Returns (before, added) alias counts.
+    """
     name_to_iata = {names[0]: iata for iata, names in name_table.items()}
     all_known_names = {n for names in name_table.values() for n in names}
     titles = list(name_to_iata.keys())
@@ -137,12 +140,15 @@ def fetch_redirects(name_table, names_file, missing_only=False, iata_filter=None
         all_iata_names = name_table[iata_filter]
         name_to_iata.update({n: iata_filter for n in all_iata_names})
         titles = all_iata_names
-        print(f"Fetching redirects for {iata_filter} ({len(titles)} names)...")
     elif missing_only:
         titles = [t for t in titles if len(name_table[name_to_iata[t]]) == 1]
-        print(f"{len(titles)} entries have no aliases yet.")
+        if verbose:
+            print(f"{len(titles)} entries have no aliases yet.")
 
-    print(f"Fetching redirects for {len(titles)} pages...")
+    if verbose:
+        print(f"Fetching redirects for {len(titles)} pages...")
+
+    before = len(name_table[iata_filter]) if iata_filter else 0
     added = 0
     for i in range(0, len(titles), 50):
         batch = titles[i:i+50]
@@ -168,34 +174,37 @@ def fetch_redirects(name_table, names_file, missing_only=False, iata_filter=None
                         all_known_names.add(alias)
                         added += 1
         save_names(name_table, names_file)
-        print(f"  Processed {min(i+50, len(titles))}/{len(titles)} — aliases added: {added}")
+        if verbose:
+            print(f"  Processed {min(i+50, len(titles))}/{len(titles)} — aliases added: {added}")
         time.sleep(0.5)
-    print(f"Done. Added {added} aliases.")
+    if verbose:
+        print(f"Done. Added {added} aliases.")
+    return before, added
 
 
 def update_entry(canonical_title, text, iata, name_table, cfg, replace=False):
-    """Save a fetched page and update the name table. Returns the IATA code."""
+    """Save a fetched page and update the name table. Returns (iata, diff_added, diff_removed)."""
     names_file = cfg["names_file"]
     pages_dir = cfg["pages_dir"]
 
     if iata not in name_table:
-        print(f"Note: {iata} not in database, adding as new entry.")
         name_table[iata] = []
-
-    print(f"IATA: {iata}, canonical title: {canonical_title}")
-    print(f"Current names: {name_table[iata]}")
 
     new_names = [canonical_title] if replace else \
         [canonical_title] + [n for n in name_table[iata] if n != canonical_title]
     name_table[iata] = new_names
     save_names(name_table, names_file)
-    print(f"Updated names: {new_names}")
 
     os.makedirs(pages_dir, exist_ok=True)
-    with open(os.path.join(pages_dir, iata + ".txt"), "w") as f:
+    path = os.path.join(pages_dir, iata + ".txt")
+    old_text = open(path).read() if os.path.exists(path) else ""
+    with open(path, "w") as f:
         f.write(text)
-    print(f"Updated {pages_dir}/{iata}.txt")
-    return iata
+
+    diff = list(difflib.unified_diff(old_text.splitlines(), text.splitlines()))
+    added   = sum(1 for l in diff if l.startswith('+') and not l.startswith('+++'))
+    removed = sum(1 for l in diff if l.startswith('-') and not l.startswith('---'))
+    return iata, added, removed
 
 
 def do_update(query, replace):
@@ -247,9 +256,14 @@ def do_update(query, replace):
             return
 
     name_table = airport_names if cfg is AIRPORTS else airline_names
-    iata = update_entry(canonical_title, text, iata, name_table, cfg, replace)
+    iata, diff_added, diff_removed = update_entry(canonical_title, text, iata, name_table, cfg, replace)
     if iata:
-        fetch_redirects(load_names(cfg["names_file"]), cfg["names_file"], iata_filter=iata)
+        aliases_before, aliases_added = fetch_redirects(
+            load_names(cfg["names_file"]), cfg["names_file"], iata_filter=iata, verbose=False
+        )
+        print(f"IATA: {iata}, canonical title: {canonical_title}")
+        print(f"  Article: +{diff_added}/-{diff_removed} lines")
+        print(f"  Redirects: {aliases_before} → {aliases_before + aliases_added} (+{aliases_added})")
 
 
 def do_all(redirects_only, missing_only):
@@ -282,7 +296,8 @@ def main():
     args = parser.parse_args()
 
     if args.update:
-        do_update(args.update, args.replace)
+        for query in args.update.split(","):
+            do_update(query.strip(), args.replace)
     elif args.all:
         do_all(args.redirects_only, args.missing_only)
     else:

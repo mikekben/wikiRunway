@@ -24,6 +24,8 @@ def main():
                         help="Like --verify, but fetches and updates asymmetric airports then re-runs")
     parser.add_argument("-r", "--region", metavar="CODE",
                         help="Print the ISO 3166 region of the given airport IATA code")
+    parser.add_argument("-ar", "--all-airports", metavar="REGION",
+                        help="List all airports in the given ISO 3166 region code")
     args = parser.parse_args()
 
 
@@ -56,6 +58,11 @@ def main():
             print(region.code)
         else:
             print(f"No region found for {code}")
+
+    if args.all_airports:
+        from .region import Region
+        for code in Region(args.all_airports.upper()).allAirports():
+            print(code)
 
     if args.dtable:
         code = args.dtable.upper()
