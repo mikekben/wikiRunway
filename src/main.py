@@ -1,7 +1,7 @@
 import argparse
 from .airport import Airport
 from .airline import Airline
-from .fetch import do_update
+from .fetch import do_update, do_update_batch
 
 
 def run_verify(current):
@@ -90,8 +90,7 @@ def main():
         if asymmetric:
             other_codes = sorted({other.code for _, other in asymmetric})
             print(f"\nFetching {len(other_codes)} asymmetric airport(s)...")
-            for ap_code in other_codes:
-                do_update(ap_code, replace=False)
+            do_update_batch(other_codes, replace=False)
             Airport.code_table.clear()
             Airport.name_table.clear()
             Airport.contents_table.clear()

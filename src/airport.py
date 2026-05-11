@@ -1,14 +1,11 @@
-import requests
 import re
 import os
 import json
 
 from .airline import Airline
 from .config import AIRPORTS_DIR, AIRPORTS_LIST
+from .fetch import fetch_page
 from .region import Region
-
-_request_count = 0
-_REQUEST_LIMIT = 100
 
 
 class Airport:
@@ -20,20 +17,6 @@ class Airport:
 
     def filePath(code):
         return os.path.join(Airport.CONTENTS_PATH, code + ".txt")
-
-    def getPage(title):
-        global _request_count
-        if _request_count > _REQUEST_LIMIT:
-            raise Exception("Request limit exceeded")
-        print("Doing request: "+title)
-        response = requests.get(f"https://en.wikipedia.org/w/index.php?title={title}&action=raw")
-        _request_count += 1
-        if response.status_code == 200:
-            if '#REDIRECT' in response.text:
-                return Airport.getPage(re.findall(r'\[\[(.*?)\]\]',response.text)[0])
-            return response.text
-        else:
-            return None
 
     def extractIATA(text):
         text = re.sub(r'<!--.*?-->', '', text)
@@ -101,13 +84,14 @@ class Airport:
             if name in Airport.name_table:
                 self.code = Airport.name_table[name]
             else:
-                contents = Airport.getPage(name)
-                if contents is None:
-                    raise Exception(f"Could not retrieve page for '{name}'")
-                self.code = Airport.extractIATA(contents)
-                if self.code is None:
-                    raise Exception(f"No IATA code found in page for '{name}'")
-                Airport.addToTable(self.code, name, contents)
+                # contents = Airport.getPage(name)
+                # if contents is None:
+                #     raise Exception(f"Could not retrieve page for '{name}'")
+                # self.code = Airport.extractIATA(contents)
+                # if self.code is None:
+                #     raise Exception(f"No IATA code found in page for '{name}'")
+                # Airport.addToTable(self.code, name, contents)
+                raise Exception(f"not in local database")
 
             if self.code not in Airport.contents_table or Airport.contents_table[self.code] == None:
                 self.update()
@@ -134,7 +118,7 @@ class Airport:
                     contents = file.read()
             else:
                 print(f"Warning: {self.code} not found locally, downloading from Wikipedia")
-                contents = Airport.getPage(self.names()[0])
+                _, contents = fetch_page(self.names()[0])
         if contents:
             Airport.contents_table[self.code] = contents
             with open(Airport.filePath(self.code),"w") as file:
@@ -212,7 +196,7 @@ class Airport:
 
         rows = []
         for x in relevant:
-            s = x.lstrip().lstrip('|')
+            s = re.sub(r'<!--.*?-->', '', x).lstrip().lstrip('|')
             masked = re.sub(r'\[\[.*?\]\]', lambda m: '\x00' * len(m.group()), s)
             while True:
                 next_mask = re.sub(r'\{\{[^{}]*\}\}', lambda m: '\x00' * len(m.group()), masked)

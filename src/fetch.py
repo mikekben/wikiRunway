@@ -14,7 +14,7 @@ from .config import (
 
 API = "https://en.wikipedia.org/w/api.php"
 PETSCAN = "https://petscan.wmcloud.org/"
-HEADERS = {"User-Agent": "WikiRunway/1.0"}
+HEADERS = {"User-Agent": "WikiRunway/1.0 (https://github.com/mikekben/wikiRunway)"}
 
 AIRPORTS = {
     "pages_dir": AIRPORTS_DIR,
@@ -137,9 +137,14 @@ def fetch_redirects(name_table, names_file, missing_only=False, iata_filter=None
     titles = list(name_to_iata.keys())
 
     if iata_filter:
-        all_iata_names = name_table[iata_filter]
-        name_to_iata.update({n: iata_filter for n in all_iata_names})
-        titles = all_iata_names
+        if isinstance(iata_filter, str):
+            iata_filter = {iata_filter}
+        titles = []
+        for iata in iata_filter:
+            iata_names = name_table.get(iata, [])
+            name_to_iata.update({n: iata for n in iata_names})
+            if iata_names:
+                titles.append(iata_names[0])  # only query canonical title; redirects are one level deep
     elif missing_only:
         titles = [t for t in titles if len(name_table[name_to_iata[t]]) == 1]
         if verbose:
@@ -148,7 +153,7 @@ def fetch_redirects(name_table, names_file, missing_only=False, iata_filter=None
     if verbose:
         print(f"Fetching redirects for {len(titles)} pages...")
 
-    before = len(name_table[iata_filter]) if iata_filter else 0
+    before = sum(len(name_table.get(iata, [])) for iata in iata_filter) if iata_filter else 0
     added = 0
     for i in range(0, len(titles), 50):
         batch = titles[i:i+50]
@@ -264,6 +269,108 @@ def do_update(query, replace):
         print(f"IATA: {iata}, canonical title: {canonical_title}")
         print(f"  Article: +{diff_added}/-{diff_removed} lines")
         print(f"  Redirects: {aliases_before} → {aliases_before + aliases_added} (+{aliases_added})")
+
+
+def do_update_batch(queries, replace):
+    """Fetch and update multiple airports/airlines in batched Wikipedia API calls."""
+    airport_names = load_names(AIRPORTS["names_file"])
+    airline_names = load_names(AIRLINES["names_file"])
+
+    # Resolve each query to its canonical title and metadata
+    title_to_meta = {}  # canonical query title -> (cfg, iata)
+    for query in queries:
+        q = query.strip()
+        qu = q.upper()
+        cfg = iata = None
+        title = q
+
+        if re.fullmatch(r'[A-Z]{3}', qu):
+            if qu not in airport_names:
+                print(f"Error: {qu} not found in airport database.")
+                continue
+            cfg, iata, title = AIRPORTS, qu, airport_names[qu][0]
+        elif re.fullmatch(r'[A-Z0-9]{2}', qu):
+            if qu not in airline_names:
+                print(f"Error: {qu} not found in airline database.")
+                continue
+            cfg, iata, title = AIRLINES, qu, airline_names[qu][0]
+        else:
+            for code, names in airport_names.items():
+                if q in names:
+                    cfg, iata, title = AIRPORTS, code, names[0]
+                    break
+            if cfg is None:
+                for code, names in airline_names.items():
+                    if q in names:
+                        cfg, iata, title = AIRLINES, code, names[0]
+                        break
+            if cfg is None:
+                print(f"Error: '{q}' not found in airport or airline database.")
+                continue
+
+        title_to_meta[title] = (cfg, iata)
+
+    if not title_to_meta:
+        return
+
+    titles = list(title_to_meta.keys())
+    for i in range(0, len(titles), 50):
+        batch = titles[i:i+50]
+        r = requests.get(API, headers=HEADERS, params={
+            "action": "query",
+            "titles": "|".join(batch),
+            "prop": "revisions",
+            "rvprop": "content",
+            "rvslots": "main",
+            "redirects": 1,
+            "format": "json",
+        })
+        r.raise_for_status()
+        data = r.json()["query"]
+
+        # Map Wikipedia's canonical titles back to our query titles so we can
+        # look up (cfg, iata). Normalization and redirects can change the title.
+        title_map = {}  # wikipedia canonical -> our query title
+        for norm in data.get("normalized", []):
+            title_map[norm["to"]] = norm["from"]
+        for rd in data.get("redirects", []):
+            orig = title_map.get(rd["from"], rd["from"])
+            title_map[rd["to"]] = orig
+
+        airport_updates = {}  # iata -> (diff_added, diff_removed, canonical_title)
+        airline_updates = {}
+        for page in data["pages"].values():
+            if "revisions" not in page:
+                print(f"Error: could not fetch '{page.get('title', '?')}'")
+                continue
+            canonical_title = page["title"]
+            text = page["revisions"][0]["slots"]["main"]["*"]
+
+            query_title = title_map.get(canonical_title, canonical_title)
+            cfg, iata = title_to_meta.get(query_title, (None, None))
+            if cfg is None:
+                print(f"Warning: unexpected page '{canonical_title}'")
+                continue
+
+            name_table = airport_names if cfg is AIRPORTS else airline_names
+            iata, diff_added, diff_removed = update_entry(canonical_title, text, iata, name_table, cfg, replace)
+            if iata:
+                (airport_updates if cfg is AIRPORTS else airline_updates)[iata] = (diff_added, diff_removed, canonical_title)
+
+        time.sleep(0.5)
+
+        # Fetch redirects for all updated entries in one batched call per cfg
+        for cfg, entries in [(AIRPORTS, airport_updates), (AIRLINES, airline_updates)]:
+            if not entries:
+                continue
+            _, aliases_added = fetch_redirects(
+                load_names(cfg["names_file"]), cfg["names_file"],
+                iata_filter=set(entries.keys()), verbose=False,
+            )
+            for iata, (diff_added, diff_removed, canonical_title) in entries.items():
+                print(f"IATA: {iata}, canonical title: {canonical_title}")
+                print(f"  Article: +{diff_added}/-{diff_removed} lines")
+            print(f"  Redirects: +{aliases_added} aliases added across {len(entries)} entries")
 
 
 def do_all(redirects_only, missing_only):

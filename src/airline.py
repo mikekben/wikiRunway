@@ -1,12 +1,9 @@
-import requests
 import re
 import os
 import json
 
 from .config import AIRLINES_DIR, AIRLINES_LIST, AIRLINES_MANUAL_ALIASES
-
-_request_count = 0
-_REQUEST_LIMIT = 100
+from .fetch import fetch_page
 
 
 class Airline:
@@ -20,20 +17,6 @@ class Airline:
 
     def filePath(code):
         return os.path.join(Airline.CONTENTS_PATH, code + ".txt")
-
-    def getPage(title):
-        global _request_count
-        if _request_count > _REQUEST_LIMIT:
-            raise Exception("Request limit exceeded")
-        print("Doing request: "+title)
-        response = requests.get(f"https://en.wikipedia.org/w/index.php?title={title}&action=raw")
-        _request_count += 1
-        if response.status_code == 200:
-            if '#REDIRECT' in response.text:
-                return Airline.getPage(re.findall(r'\[\[(.*?)\]\]',response.text)[0])
-            return response.text
-        else:
-            return None
 
     def extractIATA(text):
         match = re.search(r'\|\s*IATA\s*=\s*([A-Z0-9]{2})', text)
@@ -100,7 +83,7 @@ class Airline:
             elif name in Airline.manual_aliases:
                 self.code = Airline.manual_aliases[name]
             else:
-                contents = Airline.getPage(name)
+                _, contents = fetch_page(name)
                 if contents is None:
                     raise Exception(f"Could not retrieve page for '{name}'")
                 self.code = Airline.extractIATA(contents)
@@ -133,7 +116,7 @@ class Airline:
                     contents = file.read()
             else:
                 print(f"Warning: {self.code} not found locally, downloading from Wikipedia")
-                contents = Airline.getPage(self.names()[0])
+                _, contents = fetch_page(self.names()[0])
         if contents:
             Airline.contents_table[self.code] = contents
             with open(Airline.filePath(self.code), "w") as file:
