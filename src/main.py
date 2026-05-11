@@ -77,6 +77,14 @@ def main():
 
     if args.verify_update:
         code = args.verify_update.upper()
+        # Update the passed airport first so verify runs against its latest data,
+        # catching any new destinations introduced by the update.
+        do_update(code, replace=False)
+        Airport.code_table.clear()
+        Airport.name_table.clear()
+        Airport.contents_table.clear()
+        Airline.code_table.clear()
+        Airline.name_table.clear()
         current = Airport(code)
         asymmetric = run_verify(current)
         if asymmetric:
