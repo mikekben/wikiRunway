@@ -240,25 +240,6 @@ class Airport:
                     print(f"Warning: skipping airport '{name}': {e}")
         return airports
 
-    def destinationNames(self, airline=None):
-        """Like destinationList, but returns raw destination name strings instead of
-        resolved Airport objects. Unlike destinationList, this never tries to
-        construct/fetch any of the destinations, so it's safe to call for airports
-        that reference destinations not yet in the local database (callers can
-        decide whether/how to fetch them)."""
-        if airline is not None:
-            def normalize(n): return n[0].upper() + n[1:]
-            def matches(name):
-                n = normalize(name)
-                return n in airline.names() or Airline.manual_aliases.get(n) == airline.code
-
-        names = []
-        for airline_name, dest_names in self._parseDestTable():
-            if airline is not None and (airline_name is None or not matches(airline_name)):
-                continue
-            names.extend(dest_names)
-        return names
-
     def printDestinationTable(self):
         for line in sorted(self.airlineList(), key=lambda a: a.code):
             print(f"{line}: {','.join(sorted(str(d) for d in self.destinationList(line)))}")
