@@ -240,6 +240,25 @@ class Airport:
                     print(f"Warning: skipping airport '{name}': {e}")
         return airports
 
+    def destinationNames(self, airline=None):
+        """Like destinationList, but returns raw destination name strings instead of
+        resolved Airport objects. Unlike destinationList, this never tries to
+        construct/fetch any of the destinations, so it's safe to call for airports
+        that reference destinations not yet in the local database (callers can
+        decide whether/how to fetch them)."""
+        if airline is not None:
+            def normalize(n): return n[0].upper() + n[1:]
+            def matches(name):
+                n = normalize(name)
+                return n in airline.names() or Airline.manual_aliases.get(n) == airline.code
+
+        names = []
+        for airline_name, dest_names in self._parseDestTable():
+            if airline is not None and (airline_name is None or not matches(airline_name)):
+                continue
+            names.extend(dest_names)
+        return names
+
     def printDestinationTable(self):
         for line in sorted(self.airlineList(), key=lambda a: a.code):
             print(f"{line}: {','.join(sorted(str(d) for d in self.destinationList(line)))}")
@@ -249,6 +268,59 @@ class Airport:
         if match:
             return Region(match.group(1))
         return None
+
+    def coordinates(self):
+        """Parse the {{coord|...}} template and return (lat, lon) as decimal degrees, or None.
+
+        Handles both decimal form ({{coord|39.85|-104.67|...}}) and
+        degree/minute/second form ({{coord|39|51|30|N|104|40|23|W|...}}, with
+        minutes and/or seconds optionally omitted).
+        """
+        match = re.search(r'\{\{\s*[Cc]oord\s*\|(.*?)\}\}', self.contents(), re.DOTALL)
+        if not match:
+            return None
+
+        seq = []
+        for part in match.group(1).split('|'):
+            part = part.strip()
+            if not part:
+                continue
+            if part.upper() in ('N', 'S', 'E', 'W'):
+                seq.append(('dir', part.upper()))
+            else:
+                try:
+                    seq.append(('num', float(part)))
+                except ValueError:
+                    # Reached a named parameter (display=, type:, region:, ...)
+                    break
+
+        dir_positions = [i for i, (kind, _) in enumerate(seq) if kind == 'dir']
+
+        def dms_to_decimal(components, negative):
+            d = components[0] if len(components) > 0 else 0.0
+            m = components[1] if len(components) > 1 else 0.0
+            s = components[2] if len(components) > 2 else 0.0
+            value = d + m / 60 + s / 3600
+            return -value if negative else value
+
+        if len(dir_positions) == 2:
+            i, j = dir_positions
+            lat_nums = [v for kind, v in seq[0:i] if kind == 'num']
+            lon_nums = [v for kind, v in seq[i + 1:j] if kind == 'num']
+            lat_dir = seq[i][1]
+            lon_dir = seq[j][1]
+            if not lat_nums or not lon_nums:
+                return None
+            lat = dms_to_decimal(lat_nums, lat_dir == 'S')
+            lon = dms_to_decimal(lon_nums, lon_dir == 'W')
+            return (lat, lon)
+        elif len(dir_positions) == 0:
+            nums = [v for kind, v in seq if kind == 'num']
+            if len(nums) >= 2:
+                return (nums[0], nums[1])
+            return None
+        else:
+            return None
 
     def airlineList(self):
         airlines = set()
