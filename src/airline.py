@@ -108,6 +108,33 @@ class Airline:
             self.update()
         return Airline.contents_table[self.code]
 
+    def airportList(self, seed):
+        """BFS over airports reachable from seed via this airline's routes."""
+        if self not in seed.airlineList():
+            raise Exception(f"{self} does not serve {seed}")
+        visited = {seed}
+        queue = [seed]
+        while queue:
+            current = queue.pop(0)
+            for dest in current.destinationList(self):
+                if dest not in visited:
+                    visited.add(dest)
+                    queue.append(dest)
+        return visited
+
+    def airportsByRouteCount(self, seed):
+        """Return (Airport, route_count) pairs for this airline, sorted by
+        descending number of destinations served from that airport."""
+        counts = [(ap, len(ap.destinationList(self))) for ap in self.airportList(seed)]
+        return sorted(counts, key=lambda x: x[1], reverse=True)
+
+    def routes(self, seed):
+        """Return the set of directed (origin_code, dest_code) pairs this airline flies,
+        over the airports reachable via BFS from seed."""
+        return {(ap.code, dest.code)
+                for ap in self.airportList(seed)
+                for dest in ap.destinationList(self)}
+
     def update(self, contents=None):
         if contents == None:
             path = Airline.filePath(self.code)

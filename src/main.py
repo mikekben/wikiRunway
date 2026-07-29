@@ -26,6 +26,16 @@ def main():
                         help="Print the ISO 3166 region of the given airport IATA code")
     parser.add_argument("-ar", "--all-airports", metavar="REGION",
                         help="List all airports in the given ISO 3166 region code")
+    parser.add_argument("-aa", "--airline-airports", nargs=2, metavar=("AIRLINE", "SEED"),
+                        help="List all airports served by AIRLINE, found via BFS starting from SEED airport IATA code")
+    parser.add_argument("-ad", "--airline-dests", nargs=2, metavar=("AIRPORT", "AIRLINE"),
+                        help="List all destinations AIRLINE flies from AIRPORT")
+    parser.add_argument("-arb", "--airline-routes-both", nargs=2, metavar=("AIRLINE", "SEED"),
+                        help="List all routes flown by AIRLINE as ORIGIN-DEST pairs, including both directions")
+    parser.add_argument("-aro", "--airline-routes-oneway", nargs=2, metavar=("AIRLINE", "SEED"),
+                        help="List all routes flown by AIRLINE as ORIGIN-DEST pairs, collapsing each pair to one direction")
+    parser.add_argument("-arc", "--airline-route-counts", nargs=2, metavar=("AIRLINE", "SEED"),
+                        help="List AIRLINE's airports sorted by number of destinations served from each")
     args = parser.parse_args()
 
 
@@ -63,6 +73,47 @@ def main():
         from .region import Region
         for code in Region(args.all_airports.upper()).allAirports():
             print(code)
+
+    if args.airline_airports:
+        airline_code, seed_code = args.airline_airports
+        airline = Airline(airline_code.upper())
+        seed = Airport(seed_code.upper())
+        print(",".join(sorted(a.code for a in airline.airportList(seed))))
+
+    if args.airline_dests:
+        airport_code, airline_code = args.airline_dests
+        airport = Airport(airport_code.upper())
+        airline = Airline(airline_code.upper())
+        print(",".join(sorted(a.code for a in airport.destinationList(airline))))
+
+    if args.airline_routes_both:
+        airline_code, seed_code = args.airline_routes_both
+        airline = Airline(airline_code.upper())
+        seed = Airport(seed_code.upper())
+        routes = sorted(airline.routes(seed))
+        print(",".join(f"{o}-{d}" for o, d in routes))
+
+    if args.airline_routes_oneway:
+        airline_code, seed_code = args.airline_routes_oneway
+        airline = Airline(airline_code.upper())
+        seed = Airport(seed_code.upper())
+        seen = set()
+        oneway = []
+        for o, d in sorted(airline.routes(seed)):
+            pair = frozenset((o, d))
+            if pair in seen:
+                continue
+            seen.add(pair)
+            oneway.append(f"{o}-{d}")
+        print(",".join(oneway))
+
+    if args.airline_route_counts:
+        airline_code, seed_code = args.airline_route_counts
+        airline = Airline(airline_code.upper())
+        seed = Airport(seed_code.upper())
+        counts = airline.airportsByRouteCount(seed)
+        for ap, n in counts:
+            print(f"{ap.code}:{n}")
 
     if args.dtable:
         code = args.dtable.upper()
