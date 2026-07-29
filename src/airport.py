@@ -79,8 +79,9 @@ class Airport:
             elif self.code not in Airport.contents_table:
                 self.update()
         elif code == None:
-            # Wikipedia treats underscores and spaces as equivalent in page titles.
-            name = name.replace('_', ' ')
+            # Wikipedia treats underscores and spaces as equivalent in page titles,
+            # and collapses runs of whitespace when resolving a title.
+            name = re.sub(r'\s+', ' ', name.replace('_', ' ')).strip()
             if name in Airport.name_table:
                 self.code = Airport.name_table[name]
             else:
